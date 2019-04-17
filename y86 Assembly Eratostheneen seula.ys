@@ -1,0 +1,78 @@
+
+init:
+    irmovq $0x1800,%rbp 			# Pinon alkuosoite muistissa
+    irmovq $0x1800,%rsp 			# Pinon nykyisen (päällimäisen) muistipaikan osoite
+									#rax = max
+
+
+main:
+
+
+    irmovq $0x1,%rdx			# apumuuttuja (1)
+	irmovq $0x1,%rbx  			# neliöjuuren tulos
+	irmovq $0x0,%rsi  			# maxin kopio
+	irmovq $0x1,%rdi  			#	 ynnäin
+	irmovq $0x1,%r8  			# testaaja, eli kokonaisluku neliöjuuret
+	irmovq $0x2,%r9 			# apumuuttuja (2)
+    loop0: 						# tässä lasketaan maxin neliöjuuri, joka tallennetaan rbx:ään
+		rrmovq %rax,%rsi 		# kopioidaan max -> maxin kopio
+		addq %rdx,%rbx 			# lisätään tulokseen 1
+		addq %r9,%rdi 			# lisätään ynnäimeen 2
+		addq %rdi,%r8 			# lisätään ynnäin testaajaan
+		subq %r8,%rsi 			# vähennetään testaaja maxin kopiosta
+		jg loop0
+
+
+	rrmovq %rax,%rsi  			# siirretään kirjoitettava luku = max
+	rrmovq %rax,%rdi  			# kirjoitettavan luvun kopio
+	irmovq $0x2,%r9 			# apumuuttuja (2)
+	loop1: 						# tässä kirjoitetaan pinoon kaikki tutkittavat luvut max...5.4.3.2.
+		rrmovq %rsi,%rdi		# kopioidaan kirjoitettava luku
+		pushq %rsi				# viedään kirjoitettava luku pinoon
+		subq %rdx,%rsi 			# kirjoitettava luku - 1
+		subq %r9,%rdi			# kopio - 2
+		jne loop1 				# jos kopio on 2, silmukka katkeaa
+	
+
+		irmovq $0,%rsi  			# tutkittava luku
+	rrmovq %rsp,%rdi  			# muistipaikan osoite
+	rrmovq %rdi,%r13            # muistipaikan osoitteen kopio1
+	rrmovq %rax,%r8  			# pituus jäljellä
+	irmovq $0x8,%r9  			# apumuuttuja 8
+	irmovq $0x0,%r14 			# apumuuttuja 0
+	irmovq $0x0,%r10			# tutkittavan luvun kopio
+	subq %rdx,%r8 				# pituus jäljellä - 1
+	loop2: 						# tässä käydään läpi pinoa luku kerrallaan, ja lähetetään luku algoritmiin
+		mrmovq (%rdi),%rsi 		# noudetaan tutkittava luku seuraavasta muistipaikasta
+		mrmovq (%rdi),%r10		# kopioidaan tutkittava luku rcx:ään
+		rrmovq %rdi,%r13		# kopioidaan muistipaikan osoite kopio1:een
+	    addq %r9,%rdi			# muistipaikka + 8
+		subq %rdx,%r8 			# pituus jäljellä - 1
+		subq %r14,%rsi 			# vähennetään 0 tutkittavasta luvusta 
+		je loop2 				# jos tutkittava luku on 0, hyppy loop 2:een
+		subq %rbx,%r10			# vähennetään maxin neliöjuuri tutkittavan luvun kopiosta
+		jg end					# jos tutkittava luku on suurempi kuin maxin neliöjuuri, ohjelma loppuu
+
+
+		rrmovq %rsi,%r11  		# tutkittavan luvun kopio
+		irmovq $0,%rcx  		# hyppäysluku
+		loop3: 					# Algoritmi, joka poistaa ei-alkuluvut pinosta
+			addq %r9,%rcx		# lisätään 8 hyppäyslukuun
+			subq %rdx,%r11		# tutkittavan luvun kopio - 1
+			jg loop3 			# jos pituutta on vielä jäljellä, silmukka jatkuu
+		
+		rrmovq %r13,%r11		#muistipaikan osoitteen kopio2
+		irmovq $0,%r12			#muistipaikan osoitteen kopio3
+		loop4:
+			addq %rcx,%r11			#lisätään hyppäysluku muistipaikan kopio2:een
+			rrmovq %r11,%r12		#kopioidaan muistipaikan kopion osoite kopio3:een
+			subq %rbp,%r12			#vähennetään pinon alkuosoite muistipaikan kopio3:sta
+			jge endloop4			#jos ollaan pinon ulkopuolella, hypätään pois loop4:stä
+			rmmovq %r14,(%r11)		#tyhjennetään alkuluvun moninkerran luku
+			jmp loop4
+			
+		endloop4:
+		subq %r14,%r8 #vähennetään 0 jäljellä olevasta pituudesta
+		jne loop2
+	end:
+	halt
